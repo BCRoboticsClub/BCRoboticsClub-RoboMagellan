@@ -4,9 +4,7 @@
 #include "gps.h"  
 #include "ping.h" 
 #include "abdrive.h"
-//250 full forward
-//150 stop
-//50 full reverse
+
 
 int lMotor = 1;
 int rMotor = 0;
