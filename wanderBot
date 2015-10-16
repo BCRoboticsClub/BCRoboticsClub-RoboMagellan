@@ -1,0 +1,85 @@
+#include "simpletools.h"   
+#include "servo.h"
+#include "gps.h"  
+#include "ping.h" 
+
+
+int m1 = 1;
+int m2 = 0;
+
+
+void driveMotor(int pin, int pulseWidth){
+  servo_speed(pin, pulseWidth);
+}  
+
+int main(){
+int distance = 35;
+
+
+while(1){
+  int p2 = ping_cm(2);
+  int p3 = ping_cm(3);
+  int p5 = ping_cm(5);
+  
+  print("distR: %d, distM: %d, distL = %d \n", p2, p3, p5);  
+  
+  if(p3 < distance){
+      driveMotor(m1, 0);
+      driveMotor(m2, 0);
+      
+      driveMotor(m1, -250);
+      driveMotor(m2, -250);
+      
+      pause(500);
+      
+      driveMotor(m1, 250);
+      driveMotor(m2, 0);
+      
+      
+    /* int turn = rand() % 2;
+      if(turn == 1){
+        driveMotor(m1, 200);
+        driveMotor(m2, 0);
+        //pause(1000);
+       }
+       
+       if(turn == 0){
+         driveMotor(m1, 0);
+         driveMotor(m2, 200);
+         //pause(1000);
+        }
+    }
+    */
+  }    
+  else if(p5 < distance){ 
+      
+        driveMotor(m1, 0);
+        driveMotor(m2, 0);
+        
+        driveMotor(m1, 250);
+        driveMotor(m2, 0);
+        //pause(1000);
+        
+    }
+    
+  else if(p2 < distance){
+        
+        driveMotor(m1, 0);
+        driveMotor(m2, 0);    
+        
+        driveMotor(m1, 0);
+        driveMotor(m2, 250);
+        //pause(1000);
+        }
+        
+else{
+      driveMotor(m1, 250);
+      driveMotor(m2, 250);   
+   }
+   
+   pause(100);
+
+ }   
+   
+ return 0;         
+}
