@@ -1,24 +1,207 @@
-
 #include "simpletools.h"   
 #include "servo.h"
 #include "gps.h"  
 #include "ping.h" 
-#include "abdrive.h"
 
 
-int lMotor = 1;
-int rMotor = 0;
+int m1 = 1;
+int m2 = 0;
+int propTurn = 12000;
+int tempMotor;
+int forwardSpeed = 0;
+float bearing;
+float distanceTo;
+float currBearing;
+int speedM1 = 350;
+int speedM2 = 350;
+int distance = 35;
+int p2;
+int p3;
+int p5;
 
+float distAndBearing(float lat2, float lon2)
+{
+  float R = 6371000;
+  
+  float lat1 = gps_latitude();
+  float lon1 = gps_longitude();
+  currBearing = gps_heading();
+
+  float dLat = (lat2-lat1)*(PI/180);
+  float dLon = (lon2-lon1)*(PI/180);
+
+  float a = sin(dLat/2)*sin(dLat/2)+
+            sin(dLon/2)*sin(dLon/2)*cos(lat1*(PI/180))*cos(lat2*(PI/180));
+  float b = 2*atan2(sqrt(a), sqrt(1-a));
+  
+  bearing = (180/PI)*atan2(sin(dLon)*cos(lat2*(PI/180)),
+            cos(lat1*(PI/180))*sin(lat2*(PI/180))-sin(lat1*(PI/180))*cos(lat2*(PI/180))*cos(dLon));
+  
+  if(bearing < 0){
+    bearing = bearing+360;
+  }    
+  distanceTo = R*b;
+  print("Lat: %f, Lon: %f, bearing: %f \n", lat1, lon1, currBearing);
+  return;
+  //print("Distance:%f m \nBearing:%f degrees", distanceTo, bearing);
+}
+
+void navigateToTarget()
+{
+  int propRotate = 0.01;
+  
+  if(currBearing > bearing)
+  {
+    float deltaTheta = currBearing - bearing;
+   // driveMotor(m1, truncateMotorValues(speedM1 - propRotate*deltaTheta));
+    //driveMotor(m2, truncateMotorValues(speedM2 + propRotate*deltaTheta)); 
+    driveMotor(m1, 300);
+    driveMotor(m2, 600);
+  }    
+  else if(currBearing < bearing)
+  {
+    float deltaTheta = -currBearing + bearing;
+    //driveMotor(m1, truncateMotorValues(speedM1 + propRotate*deltaTheta));
+    //driveMotor(m2, truncateMotorValues(speedM2 - propRotate*deltaTheta)); 
+    driveMotor(m1, 600);
+    driveMotor(m2, 300);
+  }  
+  else
+    {
+      while(forwardSpeed < 250)
+      {
+        forwardSpeed += 50;
+        driveMotor(m1, forwardSpeed);
+        driveMotor(m2, forwardSpeed);   
+      }       
+      forwardSpeed = 0;
+    }  
+    
+    return;
+}  
 
 
 void driveMotor(int pin, int pulseWidth)
 {
   servo_speed(pin, pulseWidth);
+  printf("%d \n", pulseWidth);
+ 
+  if(pin == m1)
+  {
+  speedM1 = pulseWidth;
+  }   
+  if(pin == m2)
+  {
+  speedM2 = pulseWidth;
+  }     
 }  
 
-int main(){                       
+int truncateMotorValues(int mUs)
+{
+   int tempMotor;
+   
+   if(mUs > 500)
+   {
+    tempMotor = 500;
+   }
+   
+   else if(mUs < -500) 
+   {
+    tempMotor = -500;
+   }    
+        
+   else
+   {
+    tempMotor = mUs;
+   }        
+   
+   return tempMotor;
+      
+}  
 
-  driveMotor(lMotor, 250);
-  driveMotor(rMotor, 250);
+void avoidObstacles()
+{
+  
+    p2 = ping_cm(2);
+    p3 = ping_cm(3);
+    p5 = ping_cm(5);
+
+  
+    if(p3 < distance || p2 < distance && p3 < distance &&  p5 < distance)
+    {
+      int propTurnM = 8000;
+        
+      driveMotor(m1, truncateMotorValues(-propTurnM/p3));
+      driveMotor(m2, truncateMotorValues(-propTurnM/p3));
+      pause(500);
+      
+      int randomNum = rand()%2;
+      if (randomNum)
+      {
+      driveMotor(m1, truncateMotorValues(propTurn/p5));
+      driveMotor(m2, 0);
+      pause(500);  
+      }
+      else
+      {      
+      driveMotor(m1, 0);
+      driveMotor(m2, truncateMotorValues(propTurn/p2));
+      pause(500);
+      }
+      
+    }    
+  
+    else if(p5 < distance || p3 < distance && p5 < distance)
+    {
+      driveMotor(m1, truncateMotorValues(propTurn/p5));
+      driveMotor(m2, 0);  
+    }
+    
+    else if(p2 < distance || p2 < distance && p3 < distance)
+    {      
+      driveMotor(m1, 0);
+      driveMotor(m2, truncateMotorValues(propTurn/p2));
+    }
+        
+    else
+    {
+      while(forwardSpeed < 250)
+      {
+        forwardSpeed += 50;
+        driveMotor(m1, forwardSpeed);
+        driveMotor(m2, forwardSpeed);   
+      }       
+      forwardSpeed = 0;
+    }
+     
+     pause(100);
+   
+     return;
  
+}  
+
+int main()
+{
+ gps_open(7,8,4800); 
+ driveMotor(m1, 250);
+ driveMotor(m2, 250);
+ pause(6000);
+ 
+ while(1)
+ {
+   p2 = ping_cm(2);
+   p3 = ping_cm(3);
+   p5 = ping_cm(5);
+    
+   if(p2 > distance && p3 > distance && p5 > distance)
+   {    
+      distAndBearing(35.24531, -118.58182);
+      navigateToTarget();
+      pause(1000);
+   }
+   else
+    {
+    avoidObstacles();
+    }      
+  }
 }
